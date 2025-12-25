@@ -45,9 +45,9 @@ export default function FreelancerDashboard() {
             const scoreFixed = Number(Math.min(finalScore, 5).toFixed(1));
             setTotalScore(scoreFixed);
 
-            if (scoreFixed >= 4.8 && dataRep.length >= 5) setTier({ label: "LEGEND 👑", color: "#7c3aed" });
-            else if (scoreFixed >= 4.3 && dataRep.length >= 3) setTier({ label: "EXPERT 💎", color: "#2563eb" });
-            else if (scoreFixed >= 3.5) setTier({ label: "RISING STAR ✨", color: "#10b981" });
+            if (scoreFixed >= 4.8 && dataRep.length >= 5) setTier({ label: "MASTER 👑", color: "#7c3aed" });
+            else if (scoreFixed >= 4.3 && dataRep.length >= 3) setTier({ label: "PROFESSIONAL 💎", color: "#2563eb" });
+            else if (scoreFixed >= 3.5) setTier({ label: "EXPERIENCED ✨", color: "#10b981" });
             else setTier({ label: "NEWBIE 🛡️", color: "#64748b" });
         }
     } catch (error) { console.error("Lỗi:", error); }

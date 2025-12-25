@@ -15,10 +15,11 @@ export default function ClientDashboard() {
   // Modal Đăng tin
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState(""); // 🔥 THÊM BIẾN MÔ TẢ
   const [price, setPrice] = useState("0.1");
 
-  // Modal Đánh giá (MỚI)
-  const [showReviewModal, setShowReviewModal] = useState<any>(null); // Lưu job đang đánh giá
+  // Modal Đánh giá
+  const [showReviewModal, setShowReviewModal] = useState<any>(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
 
@@ -29,7 +30,6 @@ export default function ClientDashboard() {
     try {
         const res = await fetch(`${API_URL}/jobs`);
         const data = await res.json();
-        // Lọc job của ví hiện tại
         const myJobs = data.filter((j: any) => j.creator === account?.address);
         setJobs(myJobs.sort((a: any, b: any) => b.createdAt - a.createdAt));
     } catch (error) { console.error("Lỗi tải data:", error); }
@@ -60,10 +60,10 @@ export default function ClientDashboard() {
   // --- 2. CÁC HÀM CHỨC NĂNG ---
 
   const createJob = () => {
-      if(!title) return toast.error("Nhập tiêu đề!");
+      if(!title || !description) return toast.error("Vui lòng nhập tiêu đề và mô tả!"); // 🔥 CHECK THÊM MÔ TẢ
       setLoading(true);
       const tx = new Transaction();
-      const mist = BigInt(parseFloat(price) * 1e9);
+      const mist = BigInt(parseFloat(price) * 1_000_000_000);
       tx.moveCall({ target: `${PACKAGE_ID}::${MODULE_JOB}::create_job`, arguments: [tx.pure.u64(mist)] });
       const toastId = toast.loading("Đang tạo Job...");
 
@@ -73,9 +73,17 @@ export default function ClientDashboard() {
                   const res = await client.waitForTransaction({ digest: txRes.digest, options: { showEffects: true, showObjectChanges: true } });
                   const id = findId(res);
                   if(id) {
-                      const newJob = { sui_id: id, title, price, status: "Posted", createdAt: Date.now(), creator: account?.address };
+                      const newJob = { 
+                          sui_id: id, 
+                          title, 
+                          description, // 🔥 LƯU MÔ TẢ VÀO DATABASE
+                          price, 
+                          status: "Posted", 
+                          createdAt: Date.now(), 
+                          creator: account?.address 
+                      };
                       await fetch(`${API_URL}/jobs`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(newJob) });
-                      fetchJobs(); setShowModal(false); setTitle(""); toast.success("Xong!", { id: toastId });
+                      fetchJobs(); setShowModal(false); setTitle(""); setDescription(""); toast.success("Xong!", { id: toastId });
                   }
               } catch (e) { console.error(e); } finally { setLoading(false); }
           },
@@ -108,7 +116,6 @@ export default function ClientDashboard() {
       } catch(err: any) { setLoading(false); toast.error(err.message, { id: toastId }); }
   }
 
-  // 🔥 QUY TRÌNH MỚI: BẤM DUYỆT -> HIỆN MODAL ĐÁNH GIÁ -> GỌI HÀM NÀY
   const confirmApproveAndRate = () => {
       if(!showReviewModal) return;
       const job = showReviewModal;
@@ -122,13 +129,10 @@ export default function ClientDashboard() {
       signAndExecute({ transaction: tx } as any, {
           onSuccess: async (txRes: any) => {
               await client.waitForTransaction({ digest: txRes.digest });
-              
-              // 1. Cập nhật Job thành Completed
               await updateJobOnCloud(job.sui_id, { status: "Completed" });
 
-              // 2. 🔥 TẠO REPUTATION BADGE (Lưu lên MockAPI)
               const badge = {
-                  freelancer_wallet: "UNKNOWN_FREELANCER", // Trong thực tế sẽ lấy từ job.acceptedBy
+                  freelancer_wallet: "UNKNOWN_FREELANCER", 
                   client_wallet: account?.address,
                   job_title: job.title,
                   job_price: job.price,
@@ -186,6 +190,12 @@ export default function ClientDashboard() {
                     <strong>{job.title}</strong>
                     <span style={{color:'green', fontWeight:'bold'}}>{job.price} SUI</span>
                 </div>
+                
+                {/* 🔥 HIỂN THỊ MÔ TẢ CÔNG VIỆC Ở ĐÂY */}
+                <div style={{fontSize: 14, color: '#334155', margin: '10px 0', whiteSpace: 'pre-line', borderLeft: '3px solid #cbd5e1', paddingLeft: 10}}>
+                    {job.description || "Không có mô tả chi tiết."}
+                </div>
+
                 <div style={{fontSize:12, color:'#666', margin: '5px 0'}}>Status: {job.status}</div>
                 
                 {(job.status === "Submitted" || job.status === "Completed") && (
@@ -200,11 +210,25 @@ export default function ClientDashboard() {
 
                 <div style={{marginTop: 15, borderTop: '1px solid #eee', paddingTop: 10}}>
                     {job.status === "Posted" && <button onClick={() => fundJob(job)} disabled={loading} style={actionBtn}>🔒 Fund Escrow</button>}
-                    {job.status === "Funded" && <button disabled style={{...actionBtn, background:'#eee', color:'#888'}}>⏳ Chờ Freelancer...</button>}
+                    
+                    {/* 🔥🔥🔥 ĐOẠN CODE BẠN CẦN Ở ĐÂY: THU HỒI JOB & RÚT TIỀN */}
+                    {job.status === "Funded" && (
+                        <div style={{display:'flex', flexDirection:'column', gap: 8}}>
+                            <button disabled style={{...actionBtn, background:'#f8fafc', color:'#64748b', border: '1px dashed #cbd5e1', cursor: 'default'}}>
+                                ⏳ Đang chờ Freelancer...
+                            </button>
+                            <button 
+                                onClick={() => refundJob(job)} 
+                                disabled={loading} 
+                                style={{...actionBtn, background:'#fff', color:'#ef4444', border:'1px solid #ef4444', fontSize: 13}}
+                            >
+                                ⛔ Thu hồi Job & Rút tiền về
+                            </button>
+                        </div>
+                    )}
                     
                     {job.status === "Submitted" && (
                         <div style={{display:'flex', gap: 10, flexDirection:'column'}}>
-                            {/* 🔥 Bấm nút này sẽ mở Modal Đánh giá */}
                             <button onClick={() => setShowReviewModal(job)} disabled={loading} style={{...actionBtn, background:'#10b981'}}>✅ Duyệt & Đánh giá</button>
                             {!rejectMenuOpen ? (
                                 <button onClick={() => setRejectMenuOpen(job.id)} style={{...actionBtn, background:'#fff', color:'#ef4444', border:'1px solid #ef4444'}}>❌ Không duyệt...</button>
@@ -227,8 +251,22 @@ export default function ClientDashboard() {
             <div style={modalOverlay}>
                 <div style={modalContent}>
                     <h3>📝 Đăng Job Mới</h3>
-                    <input style={inputStyle} placeholder="Tên công việc" value={title} onChange={e=>setTitle(e.target.value)} />
-                    <input style={inputStyle} type="number" placeholder="Giá (SUI)" value={price} onChange={e=>setPrice(e.target.value)} />
+                    
+                    <label style={{fontSize:12, fontWeight:'bold', display:'block', marginBottom:5}}>Tiêu đề:</label>
+                    <input style={inputStyle} placeholder="VD: Thiết kế Logo..." value={title} onChange={e=>setTitle(e.target.value)} />
+
+                    <label style={{fontSize:12, fontWeight:'bold', display:'block', marginBottom:5}}>Ngân sách (SUI):</label>
+                    <input style={inputStyle} type="number" placeholder="0.1" value={price} onChange={e=>setPrice(e.target.value)} />
+                    
+                    {/* 🔥 Ô NHẬP MÔ TẢ (TEXTAREA) */}
+                    <label style={{fontSize:12, fontWeight:'bold', display:'block', marginBottom:5, marginTop: 10}}>Mô tả chi tiết:</label>
+                    <textarea 
+                        style={{...inputStyle, height: '120px', resize: 'vertical', fontFamily: 'inherit', lineHeight: '1.5'}} 
+                        placeholder="- Yêu cầu...&#10;- Deadline..."
+                        value={description} 
+                        onChange={e=>setDescription(e.target.value)} 
+                    />
+
                     <div style={{display:'flex', gap: 10, marginTop: 15}}>
                         <button onClick={createJob} disabled={loading} style={btnStyle}>Đăng Ngay</button>
                         <button onClick={()=>setShowModal(false)} style={{...btnStyle, background:'#fff', color:'#333', border:'1px solid #ccc'}}>Hủy</button>
@@ -237,7 +275,7 @@ export default function ClientDashboard() {
             </div>
         )}
 
-        {/* 🔥 MODAL ĐÁNH GIÁ (MỚI) */}
+        {/* MODAL ĐÁNH GIÁ */}
         {showReviewModal && (
             <div style={modalOverlay}>
                 <div style={modalContent}>
