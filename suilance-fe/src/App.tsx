@@ -36,11 +36,11 @@ export default function App() {
           }}>
             <div style={{ padding: "24px 16px" }}>
               <p style={sidebarLabel}>MAIN MENU</p>
-              <SidebarLink to="/" icon="🏠" label="Explore Jobs" onClick={() => setIsMobileMenuOpen(false)} />
+              <SidebarLink to="/" icon="🏠" label="EXPLORE JOBS" onClick={() => setIsMobileMenuOpen(false)} />
               
               <p style={{...sidebarLabel, marginTop: "32px"}}>ROLES</p>
-              <SidebarLink to="/client" icon="💼" label="Hire Talents" onClick={() => setIsMobileMenuOpen(false)} />
-              <SidebarLink to="/freelancer" icon="🛠️" label="Find Work" onClick={() => setIsMobileMenuOpen(false)} />
+              <SidebarLink to="/client" icon="💼" label="CLIENT" onClick={() => setIsMobileMenuOpen(false)} />
+              <SidebarLink to="/freelancer" icon="🛠️" label="FREELANCER" onClick={() => setIsMobileMenuOpen(false)} />
             </div>
           </nav>
 
