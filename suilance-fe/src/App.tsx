@@ -4,7 +4,7 @@ import { useState } from "react";
 import logoWit from './img/WIT_Logo.png';
 import ClientDashboard from "./ClientDashboard";
 import FreelancerDashboard from "./FreelancerDashboard";
-import Marketplace from "./Marketplace"; // File mới tạo bên dưới
+import Marketplace from "./Marketplace"; 
 
 export default function App() {
   const account = useCurrentAccount();
@@ -19,7 +19,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} style={mobileMenuBtn}>☰</button>
              <Link to="/" style={{textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px'}}>
-                <img src={logoWit} style={{ height: "35px" }} alt="Logo" />
+                <img src={logoWit} style={{ height: "35px" }} alt="SuiLance Logo" />
                 <h1 style={{ fontSize: "18px", fontWeight: "800", color: "#1e293b", margin: 0, letterSpacing: "-0.5px" }}>SuiLance</h1>
              </Link>
           </div>
@@ -29,22 +29,22 @@ export default function App() {
         </header>
 
         <div style={{ display: "flex", flex: 1, position: "relative" }}>
-          {/* --- SIDEBAR (Ẩn trên mobile nếu không open) --- */}
+          {/* --- SIDEBAR --- */}
           <nav style={{ 
             ...sidebarStyle, 
             display: isMobileMenuOpen || window.innerWidth > 768 ? "flex" : "none" 
           }}>
             <div style={{ padding: "20px" }}>
-              <p style={sidebarLabel}>MENU CHÍNH</p>
-              <SidebarLink to="/" icon="🏠" label="Khám phá Job" onClick={() => setIsMobileMenuOpen(false)} />
+              <p style={sidebarLabel}>MAIN MENU</p>
+              <SidebarLink to="/" icon="🏠" label="Explore Jobs" onClick={() => setIsMobileMenuOpen(false)} />
               
-              <p style={{...sidebarLabel, marginTop: "30px"}}>VAI TRÒ</p>
-              <SidebarLink to="/client" icon="💼" label="Tôi muốn Thuê" onClick={() => setIsMobileMenuOpen(false)} />
-              <SidebarLink to="/freelancer" icon="🛠️" label="Tôi tìm Việc" onClick={() => setIsMobileMenuOpen(false)} />
+              <p style={{...sidebarLabel, marginTop: "30px"}}>ROLES</p>
+              <SidebarLink to="/client" icon="💼" label="Hire Talents" onClick={() => setIsMobileMenuOpen(false)} />
+              <SidebarLink to="/freelancer" icon="🛠️" label="Find Work" onClick={() => setIsMobileMenuOpen(false)} />
             </div>
           </nav>
 
-          {/* --- NỘI DUNG CHÍNH --- */}
+          {/* --- MAIN CONTENT --- */}
           <main style={mainContentStyle}>
             {!account ? (
               <WelcomeHero />
@@ -64,7 +64,7 @@ export default function App() {
   );
 }
 
-// Sub-components cho UI chuyên nghiệp
+// UI Sub-components
 const SidebarLink = ({ to, icon, label, onClick }: any) => {
   const loc = useLocation();
   const active = loc.pathname === to;
@@ -82,10 +82,10 @@ const SidebarLink = ({ to, icon, label, onClick }: any) => {
 
 const WelcomeHero = () => (
   <div style={{ textAlign: "center", padding: "100px 20px" }}>
-    <h1 style={{ fontSize: "40px", color: "#0f172a" }}>Nền tảng Freelance Phi tập trung</h1>
+    <h1 style={{ fontSize: "40px", color: "#0f172a" }}>Decentralized Freelance Platform</h1>
     <p style={{ color: "#64748b", maxWidth: "600px", margin: "20px auto", fontSize: "18px" }}>
-      Kết nối tài năng và doanh nghiệp thông qua Smart Contract trên mạng lưới Sui. 
-      An toàn, minh bạch và tức thì.
+      Connecting talents and businesses through Smart Contracts on the Sui Network. 
+      Secure, transparent, and instantaneous.
     </p>
     <div style={{marginTop: "30px"}}>
         <ConnectButton />

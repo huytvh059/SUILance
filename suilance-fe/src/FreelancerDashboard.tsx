@@ -9,18 +9,18 @@ export default function FreelancerDashboard() {
   const account = useCurrentAccount();
   const { mutate: signAndExecute } = useSignAndExecuteTransaction();
   
-  // State quản lý Job
+  // Job Management State
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   
-  // State phân loại Modal: 'analyze' (lúc nhận việc) hoặc 'submit' (lúc nộp bài)
+  // Modal Type State: 'analyze' (Accepting job) or 'submit' (Submitting work)
   const [modalType, setModalType] = useState<'analyze' | 'submit'>('analyze');
 
   const [proof, setProof] = useState("");
   const [key, setKey] = useState("");
 
-  // State Reputation & AI
+  // Reputation & AI State
   const [reputations, setReputations] = useState<any[]>([]);
   const [totalScore, setTotalScore] = useState(0);
   const [tier, setTier] = useState({ label: "NEWBIE 🛡️", color: "#64748b" });
@@ -50,7 +50,7 @@ export default function FreelancerDashboard() {
             else if (scoreFixed >= 3.5) setTier({ label: "EXPERIENCED ✨", color: "#10b981" });
             else setTier({ label: "NEWBIE 🛡️", color: "#64748b" });
         }
-    } catch (error) { console.error("Lỗi:", error); }
+    } catch (error) { console.error("Error:", error); }
   };
 
   useEffect(() => { fetchData(); const interval = setInterval(fetchData, 3000); return () => clearInterval(interval); }, []);
@@ -62,16 +62,16 @@ export default function FreelancerDashboard() {
       fetchData();
   };
 
-  // --- 🔥 LOGIC MỞ MODAL & AI ---
+  // --- 🔥 MODAL & AI LOGIC ---
   const openAIAnalysis = (job: any) => {
       setSelectedJob(job);
-      setModalType('analyze'); // Chế độ phân tích
-      analyzeJobWithAI(job);   // Chạy AI ngay lập tức
+      setModalType('analyze'); // Analysis mode
+      analyzeJobWithAI(job);   // Run AI immediately
   }
 
   const openSubmitModal = (job: any) => {
       setSelectedJob(job);
-      setModalType('submit'); // Chế độ nộp bài
+      setModalType('submit'); // Submission mode
       setAiAdvice(""); // Reset AI text
   }
 
@@ -85,13 +85,13 @@ export default function FreelancerDashboard() {
 
       setTimeout(() => {
           if (myScore < 3.0 && price > 1.0) {
-             advice = "⚠️ RỦI RO CAO: Bạn đang là Newbie nhưng Job này giá trị lớn (>1 SUI). Client có thể yêu cầu rất khắt khe. Cân nhắc kỹ!";
+             advice = "⚠️ HIGH RISK: You are currently a Newbie but this job has high value (>1 SUI). The client might have very strict requirements. Consider carefully!";
           } else if (myScore >= 4.0 && price < 0.5) {
-             advice = "📉 KHÔNG KHUYẾN KHÍCH: Bạn là Expert nhưng Job này trả thù lao quá thấp. Đừng bán rẻ sức lao động!";
+             advice = "📉 NOT RECOMMENDED: You are an Expert but this job's budget is too low. Don't undersell your skills!";
           } else if (myScore >= 3.5 && price >= 0.5) {
-             advice = "✅ RẤT PHÙ HỢP: Kỹ năng và mức giá này tương xứng. Khả năng thành công cao. Nên nhận ngay!";
+             advice = "✅ EXCELLENT MATCH: Your skills and this price point are well-aligned. High chance of success. Go for it!";
           } else {
-             advice = "ℹ️ TRUNG BÌNH: Job này an toàn để bạn tích lũy thêm điểm kinh nghiệm.";
+             advice = "ℹ️ NEUTRAL: This job is safe for gaining more experience points.";
           }
           setAiAdvice(advice);
           setIsAnalyzing(false);
@@ -102,7 +102,7 @@ export default function FreelancerDashboard() {
   const acceptJob = () => {
       if (!selectedJob) return;
       setLoading(true);
-      const toastId = toast.loading("Đang xác nhận trên blockchain...");
+      const toastId = toast.loading("Confirming on blockchain...");
       const tx = new Transaction();
       tx.moveCall({ target: `${PACKAGE_ID}::${MODULE_JOB}::accept_job`, arguments: [tx.object(selectedJob.sui_id)] });
       
@@ -116,16 +116,16 @@ export default function FreelancerDashboard() {
                   freelancer_tier: tier.label,
                   freelancer_tier_color: tier.color 
               });
-              setLoading(false); setSelectedJob(null); toast.success("Đã nhận Job thành công!", { id: toastId });
+              setLoading(false); setSelectedJob(null); toast.success("Job accepted successfully!", { id: toastId });
           },
           onError: (e) => { setLoading(false); toast.error(e.message, { id: toastId }); }
       });
   }
 
   const submitWork = () => {
-      if(!selectedJob || !proof || !key) return toast.error("Nhập đủ thông tin!");
+      if(!selectedJob || !proof || !key) return toast.error("Please fill in all fields!");
       setLoading(true);
-      const toastId = toast.loading("Đang nộp sản phẩm...");
+      const toastId = toast.loading("Submitting deliverable...");
       const tx = new Transaction();
       const proofBytes = new TextEncoder().encode(proof);
       const keyBytes = new TextEncoder().encode(key);
@@ -134,7 +134,7 @@ export default function FreelancerDashboard() {
           onSuccess: async (txRes: any) => {
               await client.waitForTransaction({ digest: txRes.digest });
               await updateJobOnCloud(selectedJob.sui_id, { status: "Submitted", proof, key });
-              setLoading(false); setSelectedJob(null); setProof(""); setKey(""); toast.success("Đã nộp bài!", { id: toastId });
+              setLoading(false); setSelectedJob(null); setProof(""); setKey(""); toast.success("Work submitted!", { id: toastId });
           },
           onError: (e) => { setLoading(false); toast.error(e.message, { id: toastId }); }
       });
@@ -168,16 +168,16 @@ export default function FreelancerDashboard() {
                         <div style={{fontSize:12, color:'#64748b', marginBottom: 15}}>Status: <b>{job.status}</b></div>
                         <div style={{borderTop: '1px solid #f1f5f9', paddingTop: 10}}>
                             
-                            {/* 🔥 NÚT MỚI: AI CHECK TRƯỚC KHI NHẬN */}
+                            {/* 🔥 NEW BUTTON: AI CHECK BEFORE ACCEPTING */}
                             {job.status === "Funded" && (
                                 <button onClick={() => openAIAnalysis(job)} disabled={loading} style={{...acceptBtn, background: 'linear-gradient(90deg, #2563eb, #06b6d4)'}}>
-                                    ✨ AI Check & Nhận
+                                    ✨ AI Check & Accept
                                 </button>
                             )}
                             
-                            {(job.status === "Accepted" || job.status === "Rejected") && <button onClick={() => openSubmitModal(job)} disabled={loading} style={submitBtn}>📤 Nộp Bài</button>}
-                            {job.status === "Submitted" && <div style={{textAlign:'center', color:'#d97706', fontSize:13}}>⏳ Đang chờ duyệt...</div>}
-                            {job.status === "Completed" && <div style={{textAlign:'center', color:'#16a34a', fontWeight:'bold'}}>✅ Đã thanh toán</div>}
+                            {(job.status === "Accepted" || job.status === "Rejected") && <button onClick={() => openSubmitModal(job)} disabled={loading} style={submitBtn}>📤 Submit Work</button>}
+                            {job.status === "Submitted" && <div style={{textAlign:'center', color:'#d97706', fontSize:13}}>⏳ Waiting for approval...</div>}
+                            {job.status === "Completed" && <div style={{textAlign:'center', color:'#16a34a', fontWeight:'bold'}}>✅ Payment Received</div>}
                         </div>
                     </div>
                 ))}
@@ -198,22 +198,22 @@ export default function FreelancerDashboard() {
             </div>
         </div>
 
-        {/* MODAL ĐA NĂNG (AI CHECK hoặc NỘP BÀI) */}
+        {/* MULTI-PURPOSE MODAL (AI CHECK or SUBMISSION) */}
         {selectedJob && (
             <div style={modalOverlay}>
                 <div style={modalContent}>
                     
-                    {/* TRƯỜNG HỢP 1: AI CHECK (LÚC NHẬN VIỆC) */}
+                    {/* CASE 1: AI CHECK (UPON ACCEPTANCE) */}
                     {modalType === 'analyze' && (
                         <>
                             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                <h3 style={{marginTop:0, color:'#0284c7'}}>🤖 AI Phân Tích Rủi Ro</h3>
+                                <h3 style={{marginTop:0, color:'#0284c7'}}>🤖 AI Risk Analysis</h3>
                                 <div style={{fontSize:12, background:'#f3f4f6', padding:'4px 8px', borderRadius:4}}>{selectedJob.price} SUI</div>
                             </div>
                             
                             <div style={{background: '#f0f9ff', padding: 20, borderRadius: 12, border: '1px solid #bae6fd', minHeight: 100, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', textAlign:'center'}}>
                                 {isAnalyzing ? (
-                                    <div style={{color:'#0284c7', fontStyle:'italic'}}>🔄 Đang quét hồ sơ On-chain & phân tích Job...</div>
+                                    <div style={{color:'#0284c7', fontStyle:'italic'}}>🔄 Scanning On-chain profile & analyzing job...</div>
                                 ) : (
                                     <div style={{fontSize: 15, lineHeight: 1.5, color: '#334155', fontWeight: 'bold'}}>
                                         {aiAdvice}
@@ -222,25 +222,25 @@ export default function FreelancerDashboard() {
                             </div>
 
                             <div style={{display:'flex', gap:10, marginTop:25}}>
-                                {/* Nút nhận việc chỉ hiện khi đã phân tích xong */}
+                                {/* Accept button only active after analysis */}
                                 <button onClick={acceptJob} disabled={loading || isAnalyzing} style={{...acceptBtn, opacity: isAnalyzing ? 0.5 : 1}}>
-                                    🤝 Xác nhận Nhận Việc
+                                    🤝 Confirm Accept Job
                                 </button>
-                                <button onClick={()=>setSelectedJob(null)} style={{...submitBtn, background:'#94a3b8'}}>Suy nghĩ lại</button>
+                                <button onClick={()=>setSelectedJob(null)} style={{...submitBtn, background:'#94a3b8'}}>Reconsider</button>
                             </div>
                         </>
                     )}
 
-                    {/* TRƯỜNG HỢP 2: NỘP BÀI (NHƯ CŨ) */}
+                    {/* CASE 2: WORK SUBMISSION */}
                     {modalType === 'submit' && (
                         <>
-                            <h3 style={{marginTop:0}}>📤 Nộp Sản Phẩm</h3>
+                            <h3 style={{marginTop:0}}>📤 Submit Deliverable</h3>
                             <div style={{fontSize:12, marginBottom:15, color:'#64748b'}}>Job: {selectedJob.title}</div>
-                            <input style={inputStyle} value={proof} onChange={e => setProof(e.target.value)} placeholder="Link sản phẩm (GitHub/Drive)..." />
-                            <input style={inputStyle} value={key} onChange={e => setKey(e.target.value)} placeholder="Secret Key (Mật khẩu)..." />
+                            <input style={inputStyle} value={proof} onChange={e => setProof(e.target.value)} placeholder="Product Link (GitHub/Drive)..." />
+                            <input style={inputStyle} value={key} onChange={e => setKey(e.target.value)} placeholder="Secret Key (Password)..." />
                             <div style={{display:'flex', gap:10, marginTop:20}}>
-                                <button onClick={submitWork} disabled={loading} style={submitBtn}>Gửi Bài</button>
-                                <button onClick={()=>setSelectedJob(null)} style={{...submitBtn, background:'#ccc'}}>Hủy</button>
+                                <button onClick={submitWork} disabled={loading} style={submitBtn}>Submit</button>
+                                <button onClick={()=>setSelectedJob(null)} style={{...submitBtn, background:'#ccc'}}>Cancel</button>
                             </div>
                         </>
                     )}

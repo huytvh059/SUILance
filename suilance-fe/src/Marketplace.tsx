@@ -7,7 +7,7 @@ export default function Marketplace() {
 
   useEffect(() => {
     fetch(`${API_URL}/jobs`).then(res => res.json()).then(data => {
-      // Chỉ hiện các Job đã được Fund tiền (có thể nhận)
+      // Only show jobs that have been funded (available to accept)
       setJobs(data.filter((j: any) => j.status === "Funded").sort((a: any, b: any) => b.createdAt - a.createdAt));
     });
   }, []);
@@ -15,8 +15,8 @@ export default function Marketplace() {
   return (
     <div>
       <div style={{ marginBottom: "30px" }}>
-        <h2 style={{ fontSize: "28px", color: "#0f172a" }}>🔥 Việc làm mới nhất</h2>
-        <p style={{ color: "#64748b" }}>Tìm kiếm cơ hội thu nhập bằng SUI ngay hôm nay.</p>
+        <h2 style={{ fontSize: "28px", color: "#0f172a" }}>🔥 Latest Jobs</h2>
+        <p style={{ color: "#64748b" }}>Explore opportunities to earn SUI today.</p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
@@ -29,15 +29,16 @@ export default function Marketplace() {
             <p style={descTruncate}>{job.description}</p>
             <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: "12px", color: "#94a3b8" }}>By: {job.creator.slice(0,6)}...</span>
-              <Link to="/freelancer" style={applyBtn}>Xem chi tiết</Link>
+              <Link to="/freelancer" style={applyBtn}>View Details</Link>
             </div>
           </div>
-        )) : <p>Hiện chưa có công việc nào mới.</p>}
+        )) : <p>No new jobs available at the moment.</p>}
       </div>
     </div>
   );
 }
 
+// --- STYLES (REMAIN UNCHANGED) ---
 const marketCard: any = { background: "#fff", padding: "24px", borderRadius: "16px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)", border: "1px solid #f1f5f9" };
 const priceTag: any = { background: "#dcfce7", color: "#166534", padding: "4px 12px", borderRadius: "20px", fontWeight: "700", fontSize: "14px" };
 const descTruncate: any = { color: "#475569", fontSize: "14px", lineHeight: "1.5", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxDirection: "vertical", overflow: "hidden", margin: "15px 0" };
