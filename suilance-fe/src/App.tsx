@@ -12,15 +12,15 @@ export default function App() {
 
   return (
     <Router>
-      <div style={{ minHeight: "100vh", backgroundColor: "#f1f5f9", display: "flex", flexDirection: "column" }}>
+      <div style={globalWrapper}>
         
         {/* --- HEADER --- */}
         <header style={headerStyle}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} style={mobileMenuBtn}>☰</button>
-             <Link to="/" style={{textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px'}}>
-                <img src={logoWit} style={{ height: "35px" }} alt="SuiLance Logo" />
-                <h1 style={{ fontSize: "18px", fontWeight: "800", color: "#1e293b", margin: 0, letterSpacing: "-0.5px" }}>SuiLance</h1>
+             <Link to="/" style={{textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px'}}>
+                <img src={logoWit} style={{ height: "32px", borderRadius: "6px" }} alt="SuiLance Logo" />
+                <h1 style={brandLogoStyle}>SuiLance</h1>
              </Link>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
@@ -34,11 +34,11 @@ export default function App() {
             ...sidebarStyle, 
             display: isMobileMenuOpen || window.innerWidth > 768 ? "flex" : "none" 
           }}>
-            <div style={{ padding: "20px" }}>
+            <div style={{ padding: "24px 16px" }}>
               <p style={sidebarLabel}>MAIN MENU</p>
               <SidebarLink to="/" icon="🏠" label="Explore Jobs" onClick={() => setIsMobileMenuOpen(false)} />
               
-              <p style={{...sidebarLabel, marginTop: "30px"}}>ROLES</p>
+              <p style={{...sidebarLabel, marginTop: "32px"}}>ROLES</p>
               <SidebarLink to="/client" icon="💼" label="Hire Talents" onClick={() => setIsMobileMenuOpen(false)} />
               <SidebarLink to="/freelancer" icon="🛠️" label="Find Work" onClick={() => setIsMobileMenuOpen(false)} />
             </div>
@@ -71,33 +71,123 @@ const SidebarLink = ({ to, icon, label, onClick }: any) => {
   return (
     <Link to={to} onClick={onClick} style={{
       ...navLinkStyle,
-      backgroundColor: active ? "#e2e8f0" : "transparent",
-      color: active ? "#2563eb" : "#475569"
+      backgroundColor: active ? "#eff6ff" : "transparent",
+      color: active ? "#2563eb" : "#64748b"
     }}>
-      <span style={{fontSize: "20px"}}>{icon}</span>
-      <span style={{fontWeight: active ? "700" : "500"}}>{label}</span>
+      <span style={{fontSize: "18px", opacity: active ? 1 : 0.7}}>{icon}</span>
+      <span style={{fontWeight: active ? "600" : "500", fontSize: "14px"}}>{label}</span>
+      {active && <div style={activeIndicator} />}
     </Link>
   );
 };
 
 const WelcomeHero = () => (
-  <div style={{ textAlign: "center", padding: "100px 20px" }}>
-    <h1 style={{ fontSize: "40px", color: "#0f172a" }}>Decentralized Freelance Platform</h1>
-    <p style={{ color: "#64748b", maxWidth: "600px", margin: "20px auto", fontSize: "18px" }}>
+  <div style={{ textAlign: "center", padding: "120px 20px", background: "white", borderRadius: "24px", margin: "20px", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)" }}>
+    <h1 style={{ fontSize: "48px", fontWeight: "850", color: "#0f172a", letterSpacing: "-0.04em", marginBottom: "16px" }}>
+      Decentralized Freelance Platform
+    </h1>
+    <p style={{ color: "#475569", maxWidth: "580px", margin: "0 auto", fontSize: "19px", lineHeight: "1.6" }}>
       Connecting talents and businesses through Smart Contracts on the Sui Network. 
       Secure, transparent, and instantaneous.
     </p>
-    <div style={{marginTop: "30px"}}>
+    <div style={{marginTop: "40px"}}>
         <ConnectButton />
     </div>
   </div>
 );
 
-// --- STYLES ---
-const headerStyle: any = { height: "70px", background: "#fff", padding: "0 24px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", position: "sticky", top: 0, zIndex: 100 };
-const sidebarStyle: any = { width: "260px", background: "#fff", borderRight: "1px solid #e2e8f0", flexDirection: "column", position: "sticky", top: "70px", height: "calc(100vh - 70px)", zIndex: 90 };
-const mainContentStyle: any = { flex: 1, padding: "30px", overflowX: "hidden" };
-const containerFluid: any = { maxWidth: "1200px", margin: "0 auto" };
-const sidebarLabel: any = { fontSize: "11px", fontWeight: "700", color: "#94a3b8", marginBottom: "12px", paddingLeft: "12px" };
-const navLinkStyle: any = { display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "10px", textDecoration: "none", marginBottom: "4px", transition: "0.2s" };
-const mobileMenuBtn: any = { display: window.innerWidth > 768 ? "none" : "block", background: "none", border: "none", fontSize: "24px", cursor: "pointer" };
+// --- IMPROVED STYLES ---
+const fontStack = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+const globalWrapper: any = { 
+  minHeight: "100vh", 
+  backgroundColor: "#f8fafc", 
+  display: "flex", 
+  flexDirection: "column",
+  fontFamily: fontStack,
+  color: "#1e293b"
+};
+
+const headerStyle: any = { 
+  height: "72px", 
+  background: "rgba(255, 255, 255, 0.8)", 
+  backdropFilter: "blur(8px)",
+  padding: "0 32px", 
+  display: "flex", 
+  justifyContent: "space-between", 
+  alignItems: "center", 
+  borderBottom: "1px solid #e2e8f0",
+  position: "sticky", 
+  top: 0, 
+  zIndex: 100 
+};
+
+const brandLogoStyle: any = { 
+  fontSize: "20px", 
+  fontWeight: "800", 
+  color: "#0f172a", 
+  margin: 0, 
+  letterSpacing: "-0.03em" 
+};
+
+const sidebarStyle: any = { 
+  width: "280px", 
+  background: "#fff", 
+  borderRight: "1px solid #e2e8f0", 
+  flexDirection: "column", 
+  position: "sticky", 
+  top: "72px", 
+  height: "calc(100vh - 72px)", 
+  zIndex: 90 
+};
+
+const mainContentStyle: any = { 
+  flex: 1, 
+  padding: "40px", 
+  overflowX: "hidden" 
+};
+
+const containerFluid: any = { 
+  maxWidth: "1100px", 
+  margin: "0 auto" 
+};
+
+const sidebarLabel: any = { 
+  fontSize: "12px", 
+  fontWeight: "700", 
+  color: "#94a3b8", 
+  marginBottom: "16px", 
+  paddingLeft: "12px",
+  letterSpacing: "0.05em"
+};
+
+const navLinkStyle: any = { 
+  display: "flex", 
+  alignItems: "center", 
+  gap: "12px", 
+  padding: "12px 16px", 
+  borderRadius: "12px", 
+  textDecoration: "none", 
+  marginBottom: "6px", 
+  transition: "all 0.2s ease",
+  position: "relative"
+};
+
+const activeIndicator: any = {
+  position: "absolute",
+  left: "-16px",
+  width: "4px",
+  height: "20px",
+  backgroundColor: "#2563eb",
+  borderRadius: "0 4px 4px 0"
+};
+
+const mobileMenuBtn: any = { 
+  display: window.innerWidth > 768 ? "none" : "block", 
+  background: "#f1f5f9", 
+  border: "none", 
+  fontSize: "20px", 
+  cursor: "pointer",
+  padding: "8px",
+  borderRadius: "8px"
+};
