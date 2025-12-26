@@ -11,11 +11,12 @@ export default function ClientDashboard() {
   
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
   // Modal Đăng tin
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState(""); // 🔥 THÊM BIẾN MÔ TẢ
+  const [description, setDescription] = useState("");
   const [price, setPrice] = useState("0.1");
 
   // Modal Đánh giá
@@ -25,7 +26,14 @@ export default function ClientDashboard() {
 
   const [rejectMenuOpen, setRejectMenuOpen] = useState<string | null>(null);
 
-  // --- 1. TẢI DATA ---
+  // Theo dõi kích thước màn hình
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // --- 1. TẢI DATA (GIỮ NGUYÊN LOGIC) ---
   const fetchJobs = async () => {
     try {
         const res = await fetch(`${API_URL}/jobs`);
@@ -57,10 +65,9 @@ export default function ClientDashboard() {
       return null;
   };
 
-  // --- 2. CÁC HÀM CHỨC NĂNG ---
-
+  // --- 2. CÁC HÀM CHỨC NĂNG (GIỮ NGUYÊN LOGIC) ---
   const createJob = () => {
-      if(!title || !description) return toast.error("Vui lòng nhập tiêu đề và mô tả!"); // 🔥 CHECK THÊM MÔ TẢ
+      if(!title || !description) return toast.error("Vui lòng nhập tiêu đề và mô tả!");
       setLoading(true);
       const tx = new Transaction();
       const mist = BigInt(parseFloat(price) * 1_000_000_000);
@@ -76,7 +83,7 @@ export default function ClientDashboard() {
                       const newJob = { 
                           sui_id: id, 
                           title, 
-                          description, // 🔥 LƯU MÔ TẢ VÀO DATABASE
+                          description,
                           price, 
                           status: "Posted", 
                           createdAt: Date.now(), 
@@ -119,10 +126,8 @@ export default function ClientDashboard() {
   const confirmApproveAndRate = () => {
       if(!showReviewModal) return;
       const job = showReviewModal;
-      
       setLoading(true);
-      const toastId = toast.loading("Đang trả tiền & Cấp bằng chứng nhận...");
-      
+      const toastId = toast.loading("Đang trả tiền & Cấp chứng nhận...");
       const tx = new Transaction();
       tx.moveCall({ target: `${PACKAGE_ID}::${MODULE_ESCROW}::release_funds`, arguments: [tx.object(job.escrowId), tx.object(job.sui_id)] });
       
@@ -130,9 +135,8 @@ export default function ClientDashboard() {
           onSuccess: async (txRes: any) => {
               await client.waitForTransaction({ digest: txRes.digest });
               await updateJobOnCloud(job.sui_id, { status: "Completed" });
-
               const badge = {
-                  freelancer_wallet: "UNKNOWN_FREELANCER", 
+                  freelancer_wallet: job.freelancer || "UNKNOWN", 
                   client_wallet: account?.address,
                   job_title: job.title,
                   job_price: job.price,
@@ -141,9 +145,8 @@ export default function ClientDashboard() {
                   issued_at: Date.now()
               };
               await fetch(`${API_URL}/reputations`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(badge) });
-
               setLoading(false); setShowReviewModal(null); setRating(5); setComment("");
-              toast.success("Đã trả tiền & Cấp huy hiệu uy tín!", { id: toastId });
+              toast.success("Đã hoàn tất!", { id: toastId });
           },
           onError: (e) => { setLoading(false); toast.error(e.message, { id: toastId }); }
       });
@@ -153,13 +156,13 @@ export default function ClientDashboard() {
       if(!confirm("Yêu cầu sửa bài?")) return;
       await updateJobOnCloud(job.sui_id, { status: "Rejected" });
       setRejectMenuOpen(null);
-      toast("Đã yêu cầu sửa", { icon: '⚠️' });
+      toast("Đã gửi yêu cầu", { icon: '🔄' });
   }
 
   const refundJob = (job: any) => {
-    if(!confirm("Hủy và hoàn tiền?")) return;
+    if(!confirm("Hủy và rút tiền về ví?")) return;
     setLoading(true);
-    const toastId = toast.loading("Đang hoàn tiền...");
+    const toastId = toast.loading("Đang rút tiền...");
     const tx = new Transaction();
     tx.moveCall({ target: `${PACKAGE_ID}::${MODULE_ESCROW}::refund`, arguments: [tx.object(job.escrowId)] });
     
@@ -168,108 +171,139 @@ export default function ClientDashboard() {
             await client.waitForTransaction({ digest: txRes.digest });
             await updateJobOnCloud(job.sui_id, { status: "Refunded" });
             setLoading(false); setRejectMenuOpen(null);
-            toast.success("Đã hoàn tiền!", { id: toastId });
+            toast.success("Đã nhận lại tiền!", { id: toastId });
         },
         onError: (e) => { setLoading(false); toast.error(e.message, { id: toastId }); }
     });
   }
 
+  // Helper render Badge trạng thái
+  const renderStatus = (status: string) => {
+    const styles: any = {
+        Posted: { bg: '#f1f5f9', color: '#475569' },
+        Funded: { bg: '#e0f2fe', color: '#0369a1' },
+        Accepted: { bg: '#fef3c7', color: '#92400e' },
+        Submitted: { bg: '#dcfce7', color: '#166534' },
+        Completed: { bg: '#dcfce7', color: '#15803d' },
+        Rejected: { bg: '#fee2e2', color: '#991b1b' },
+        Refunded: { bg: '#f1f5f9', color: '#94a3b8' },
+    };
+    const style = styles[status] || styles.Posted;
+    return <span style={{...badgeStyle, backgroundColor: style.bg, color: style.color}}>{status}</span>
+  }
+
   return (
-    <div style={{maxWidth: 800, margin: '20px auto', fontFamily: 'sans-serif'}}>
-        <div style={{display:'flex', justifyContent:'space-between', marginBottom: 20, alignItems:'center'}}>
+    <div style={{maxWidth: 900, margin: '0 auto', paddingBottom: 100}}>
+        {/* HEADER */}
+        <div style={{display:'flex', justifyContent:'space-between', marginBottom: 30, alignItems:'center', flexWrap: 'wrap', gap: 15}}>
             <div>
-                <h2 style={{color: '#2563eb', margin: 0}}>👨‍💼 Client Dashboard</h2>
-                <div style={{fontSize: 12, color: '#64748b', marginTop: 5}}>Ví: {account?.address}</div>
+                <h2 style={{color: '#0f172a', margin: 0, fontSize: isMobile ? '20px' : '26px'}}>💼 Quản lý Job của tôi</h2>
+                <div style={{fontSize: 13, color: '#64748b', marginTop: 4}}>Ví: {account?.address?.slice(0,10)}...</div>
             </div>
-            <button onClick={() => setShowModal(true)} style={btnStyle}>+ Đăng Tin</button>
+            <button onClick={() => setShowModal(true)} style={primaryBtn}>+ Đăng Job Mới</button>
         </div>
 
-        {jobs.map(job => (
-            <div key={job.id} style={cardStyle}>
-                <div style={{display:'flex', justifyContent:'space-between'}}>
-                    <strong>{job.title}</strong>
-                    <span style={{color:'green', fontWeight:'bold'}}>{job.price} SUI</span>
-                </div>
-                
-                {/* 🔥 HIỂN THỊ MÔ TẢ CÔNG VIỆC Ở ĐÂY */}
-                <div style={{fontSize: 14, color: '#334155', margin: '10px 0', whiteSpace: 'pre-line', borderLeft: '3px solid #cbd5e1', paddingLeft: 10}}>
-                    {job.description || "Không có mô tả chi tiết."}
-                </div>
-
-                <div style={{fontSize:12, color:'#666', margin: '5px 0'}}>Status: {job.status}</div>
-                
-                {(job.status === "Submitted" || job.status === "Completed") && (
-                    <div style={{background: job.status === 'Completed' ? '#f0fdf4' : '#f8fafc', padding: 15, borderRadius: 8, margin: '15px 0', border: job.status === 'Completed' ? '1px solid #86efac' : '1px solid #e2e8f0'}}>
-                        <div style={{marginBottom: 10, fontSize: 13}}>🔗 <a href={job.proof} target="_blank" style={{color:'#0284c7'}}>{job.proof}</a></div>
-                        <div style={{display:'flex', alignItems:'center', gap: 10}}>
-                            <span>🔑</span>
-                            {job.status === "Completed" ? <div style={{color:'#16a34a', fontWeight:'bold'}}>{job.key}</div> : <div style={{color:'#64748b', fontSize: 12, fontStyle:'italic'}}>🔒 **********</div>}
+        {/* LIST JOBS */}
+        {jobs.length === 0 ? (
+            <div style={{textAlign:'center', padding: '50px 0', color:'#94a3b8'}}>Bro chưa có Job nào. Hãy tạo Job đầu tiên!</div>
+        ) : (
+            jobs.map(job => (
+                <div key={job.id} style={cardStyle}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: 15}}>
+                        <div>
+                            <div style={{marginBottom: 8}}>{renderStatus(job.status)}</div>
+                            <h3 style={{margin: 0, fontSize: '18px', color: '#1e293b'}}>{job.title}</h3>
+                        </div>
+                        <div style={{textAlign: 'right'}}>
+                            <div style={{fontSize: '20px', fontWeight: '800', color: '#2563eb'}}>{job.price} SUI</div>
+                            <div style={{fontSize: '11px', color: '#94a3b8'}}>Giá ngân sách</div>
                         </div>
                     </div>
-                )}
+                    
+                    <div style={descBox}>
+                        {job.description || "Không có mô tả chi tiết."}
+                    </div>
 
-                <div style={{marginTop: 15, borderTop: '1px solid #eee', paddingTop: 10}}>
-                    {job.status === "Posted" && <button onClick={() => fundJob(job)} disabled={loading} style={actionBtn}>🔒 Fund Escrow</button>}
-                    
-                    {/* 🔥🔥🔥 ĐOẠN CODE BẠN CẦN Ở ĐÂY: THU HỒI JOB & RÚT TIỀN */}
-                    {job.status === "Funded" && (
-                        <div style={{display:'flex', flexDirection:'column', gap: 8}}>
-                            <button disabled style={{...actionBtn, background:'#f8fafc', color:'#64748b', border: '1px dashed #cbd5e1', cursor: 'default'}}>
-                                ⏳ Đang chờ Freelancer...
-                            </button>
-                            <button 
-                                onClick={() => refundJob(job)} 
-                                disabled={loading} 
-                                style={{...actionBtn, background:'#fff', color:'#ef4444', border:'1px solid #ef4444', fontSize: 13}}
-                            >
-                                ⛔ Thu hồi Job & Rút tiền về
-                            </button>
+                    {/* HIỂN THỊ KẾT QUẢ NỘP BÀI */}
+                    {(job.status === "Submitted" || job.status === "Completed") && (
+                        <div style={resultBox}>
+                            <div style={{fontWeight: 'bold', fontSize: 13, marginBottom: 10, color: '#475569'}}>🚀 Sản phẩm hoàn thành:</div>
+                            <div style={{display:'flex', alignItems: 'center', gap: 10, marginBottom: 8}}>
+                                <span style={{fontSize: 16}}>🔗</span>
+                                <a href={job.proof} target="_blank" style={{color:'#2563eb', fontSize: 13, textDecoration: 'none', wordBreak: 'break-all'}}>{job.proof}</a>
+                            </div>
+                            <div style={{display:'flex', alignItems:'center', gap: 10, background: '#fff', padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0'}}>
+                                <span>🔑</span>
+                                {job.status === "Completed" ? 
+                                    <strong style={{color:'#16a34a', fontSize: 14}}>{job.key}</strong> : 
+                                    <span style={{color:'#94a3b8', fontSize: 13, fontStyle:'italic'}}>Bị khóa (Duyệt để xem)</span>
+                                }
+                            </div>
                         </div>
                     )}
-                    
-                    {job.status === "Submitted" && (
-                        <div style={{display:'flex', gap: 10, flexDirection:'column'}}>
-                            <button onClick={() => setShowReviewModal(job)} disabled={loading} style={{...actionBtn, background:'#10b981'}}>✅ Duyệt & Đánh giá</button>
-                            {!rejectMenuOpen ? (
-                                <button onClick={() => setRejectMenuOpen(job.id)} style={{...actionBtn, background:'#fff', color:'#ef4444', border:'1px solid #ef4444'}}>❌ Không duyệt...</button>
-                            ) : rejectMenuOpen === job.id && (
-                                <div style={{display:'flex', gap:5}}>
-                                    <button onClick={() => requestRevision(job)} style={{...actionBtn, background:'#f59e0b', fontSize:13}}>🔄 Sửa lại</button>
-                                    <button onClick={() => refundJob(job)} disabled={loading} style={{...actionBtn, background:'#ef4444', fontSize:13}}>⛔ Hủy luôn</button>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {job.status === "Completed" && <div style={{textAlign:'center', marginTop:10}}><span style={{color:'#ef4444', background: '#fee2e2', padding: '2px 10px', borderRadius: 10, fontSize: 12}}>💸 - {job.price} SUI</span></div>}
-                    {job.status === "Refunded" && <div style={{color:'#ef4444', fontWeight:'bold', textAlign:'center'}}>⛔ Đã hủy.</div>}
+
+                    {/* ACTIONS CỦA CLIENT */}
+                    <div style={{marginTop: 20, display:'flex', gap: 10, flexWrap: 'wrap'}}>
+                        {job.status === "Posted" && <button onClick={() => fundJob(job)} disabled={loading} style={fundBtn}>🔒 Nạp tiền (Escrow)</button>}
+                        
+                        {job.status === "Funded" && (
+                            <div style={{width: '100%', display:'flex', gap: 10, flexDirection: isMobile ? 'column' : 'row'}}>
+                                <div style={waitingMsg}>⏳ Đang chờ Freelancer nhận việc...</div>
+                                <button onClick={() => refundJob(job)} disabled={loading} style={dangerOutlineBtn}>⛔ Thu hồi Job & Rút tiền</button>
+                            </div>
+                        )}
+
+                        {job.status === "Accepted" && (
+                             <div style={waitingMsg}>⚙️ Freelancer đang thực hiện công việc...</div>
+                        )}
+                        
+                        {job.status === "Submitted" && (
+                            <div style={{display:'flex', gap: 10, width: '100%', flexDirection: isMobile ? 'column' : 'row'}}>
+                                <button onClick={() => setShowReviewModal(job)} disabled={loading} style={successBtn}>✅ Duyệt & Trả tiền</button>
+                                {!rejectMenuOpen ? (
+                                    <button onClick={() => setRejectMenuOpen(job.id)} style={dangerOutlineBtn}>❌ Không duyệt...</button>
+                                ) : rejectMenuOpen === job.id && (
+                                    <div style={{display:'flex', gap:10, flex: 1}}>
+                                        <button onClick={() => requestRevision(job)} style={warningBtn}>🔄 Yêu cầu sửa</button>
+                                        <button onClick={() => refundJob(job)} disabled={loading} style={dangerBtn}>⛔ Hủy & Hoàn tiền</button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
-        ))}
+            ))
+        )}
 
         {/* MODAL ĐĂNG TIN */}
         {showModal && (
             <div style={modalOverlay}>
-                <div style={modalContent}>
-                    <h3>📝 Đăng Job Mới</h3>
+                <div style={{...modalContent, width: isMobile ? '90%' : '450px'}}>
+                    <h3 style={{marginTop: 0, fontSize: 20}}>📝 Đăng Job Mới</h3>
                     
-                    <label style={{fontSize:12, fontWeight:'bold', display:'block', marginBottom:5}}>Tiêu đề:</label>
-                    <input style={inputStyle} placeholder="VD: Thiết kế Logo..." value={title} onChange={e=>setTitle(e.target.value)} />
+                    <div style={inputGroup}>
+                        <label style={labelStyle}>Tiêu đề công việc</label>
+                        <input style={inputStyle} placeholder="VD: Viết Smart Contract..." value={title} onChange={e=>setTitle(e.target.value)} />
+                    </div>
 
-                    <label style={{fontSize:12, fontWeight:'bold', display:'block', marginBottom:5}}>Ngân sách (SUI):</label>
-                    <input style={inputStyle} type="number" placeholder="0.1" value={price} onChange={e=>setPrice(e.target.value)} />
+                    <div style={inputGroup}>
+                        <label style={labelStyle}>Ngân sách (SUI)</label>
+                        <input style={inputStyle} type="number" placeholder="0.1" value={price} onChange={e=>setPrice(e.target.value)} />
+                    </div>
                     
-                    {/* 🔥 Ô NHẬP MÔ TẢ (TEXTAREA) */}
-                    <label style={{fontSize:12, fontWeight:'bold', display:'block', marginBottom:5, marginTop: 10}}>Mô tả chi tiết:</label>
-                    <textarea 
-                        style={{...inputStyle, height: '120px', resize: 'vertical', fontFamily: 'inherit', lineHeight: '1.5'}} 
-                        placeholder="- Yêu cầu...&#10;- Deadline..."
-                        value={description} 
-                        onChange={e=>setDescription(e.target.value)} 
-                    />
+                    <div style={inputGroup}>
+                        <label style={labelStyle}>Mô tả chi tiết</label>
+                        <textarea 
+                            style={{...inputStyle, height: '120px', resize: 'none'}} 
+                            placeholder="- Yêu cầu cụ thể...&#10;- Thời gian hoàn thành..."
+                            value={description} 
+                            onChange={e=>setDescription(e.target.value)} 
+                        />
+                    </div>
 
-                    <div style={{display:'flex', gap: 10, marginTop: 15}}>
-                        <button onClick={createJob} disabled={loading} style={btnStyle}>Đăng Ngay</button>
-                        <button onClick={()=>setShowModal(false)} style={{...btnStyle, background:'#fff', color:'#333', border:'1px solid #ccc'}}>Hủy</button>
+                    <div style={{display:'flex', gap: 12, marginTop: 25}}>
+                        <button onClick={createJob} disabled={loading} style={primaryBtn}>Đăng Job</button>
+                        <button onClick={()=>setShowModal(false)} style={secondaryBtn}>Hủy</button>
                     </div>
                 </div>
             </div>
@@ -278,27 +312,27 @@ export default function ClientDashboard() {
         {/* MODAL ĐÁNH GIÁ */}
         {showReviewModal && (
             <div style={modalOverlay}>
-                <div style={modalContent}>
-                    <h3 style={{color:'#10b981'}}>🌟 Đánh giá Freelancer</h3>
-                    <p style={{fontSize:13, color:'#666'}}>Công việc: {showReviewModal.title}</p>
+                <div style={{...modalContent, width: isMobile ? '90%' : '400px'}}>
+                    <h3 style={{marginTop: 0, color:'#10b981'}}>🌟 Duyệt sản phẩm</h3>
+                    <p style={{fontSize:14, color:'#64748b'}}>Bạn đang xác nhận trả {showReviewModal.price} SUI cho Freelancer.</p>
                     
                     <div style={{margin:'20px 0'}}>
-                        <label style={{fontWeight:'bold', display:'block', marginBottom:5}}>Chấm điểm (1-5 sao):</label>
-                        <div style={{display:'flex', gap:10}}>
+                        <label style={labelStyle}>Chấm điểm tài năng:</label>
+                        <div style={{display:'flex', gap:12, marginTop: 10}}>
                             {[1,2,3,4,5].map(star => (
-                                <span key={star} onClick={() => setRating(star)} style={{cursor:'pointer', fontSize:24, filter: star <= rating ? 'grayscale(0)' : 'grayscale(100%)'}}>⭐</span>
+                                <span key={star} onClick={() => setRating(star)} style={{cursor:'pointer', fontSize:28, filter: star <= rating ? 'none' : 'grayscale(100%)'}}>⭐</span>
                             ))}
                         </div>
                     </div>
 
-                    <div style={{marginBottom:20}}>
-                        <label style={{fontWeight:'bold', display:'block', marginBottom:5}}>Nhận xét:</label>
-                        <textarea style={{...inputStyle, height:80}} placeholder="Làm tốt lắm..." value={comment} onChange={e=>setComment(e.target.value)} />
+                    <div style={inputGroup}>
+                        <label style={labelStyle}>Nhận xét về chất lượng:</label>
+                        <textarea style={{...inputStyle, height:80}} placeholder="Freelancer làm việc rất chuyên nghiệp..." value={comment} onChange={e=>setComment(e.target.value)} />
                     </div>
 
-                    <div style={{display:'flex', gap: 10}}>
-                        <button onClick={confirmApproveAndRate} disabled={loading} style={{...btnStyle, background:'#10b981'}}>✅ Trả tiền & Cấp Badge</button>
-                        <button onClick={()=>setShowReviewModal(null)} style={{...btnStyle, background:'#fff', color:'#333', border:'1px solid #ccc'}}>Để sau</button>
+                    <div style={{display:'flex', gap: 12, marginTop: 25}}>
+                        <button onClick={confirmApproveAndRate} disabled={loading} style={successBtn}>✅ Trả tiền & Kết thúc</button>
+                        <button onClick={()=>setShowReviewModal(null)} style={secondaryBtn}>Để sau</button>
                     </div>
                 </div>
             </div>
@@ -307,9 +341,24 @@ export default function ClientDashboard() {
   )
 }
 
-const btnStyle: any = { padding: '10px 20px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', width:'100%' };
-const actionBtn: any = { ...btnStyle, fontSize: 14 };
-const cardStyle: any = { padding: 20, border: '1px solid #e5e7eb', borderRadius: 12, marginBottom: 15, background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' };
-const inputStyle: any = { width: '100%', padding: 10, marginBottom: 10, boxSizing: 'border-box', border: '1px solid #ccc', borderRadius: 6 };
-const modalOverlay: any = { position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', justifyContent:'center', alignItems:'center', zIndex: 999 };
-const modalContent: any = { background:'white', padding: 30, borderRadius: 12, width: 400 };
+// --- STYLES SYSTEM ---
+const primaryBtn: any = { padding: '12px 24px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: '700', fontSize: '14px', flex: 1 };
+const secondaryBtn: any = { ...primaryBtn, background: '#f1f5f9', color: '#475569' };
+const successBtn: any = { ...primaryBtn, background: '#10b981' };
+const warningBtn: any = { ...primaryBtn, background: '#f59e0b' };
+const dangerBtn: any = { ...primaryBtn, background: '#ef4444' };
+const dangerOutlineBtn: any = { ...primaryBtn, background: 'transparent', color: '#ef4444', border: '1px solid #ef4444' };
+const fundBtn: any = { ...primaryBtn, background: '#0f172a' };
+
+const cardStyle: any = { padding: '24px', border: '1px solid #f1f5f9', borderRadius: 16, marginBottom: 20, background: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' };
+const badgeStyle: any = { padding: '4px 10px', borderRadius: 6, fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' };
+const descBox: any = { fontSize: '14px', color: '#475569', margin: '15px 0', lineHeight: '1.6', whiteSpace: 'pre-line', padding: '12px', background: '#f8fafc', borderRadius: 10 };
+const resultBox: any = { background: '#f0fdf4', padding: 15, borderRadius: 12, border: '1px solid #bbf7d0', marginTop: 15 };
+const waitingMsg: any = { flex: 1, display: 'flex', alignItems: 'center', fontSize: '13px', color: '#64748b', fontStyle: 'italic' };
+
+const inputStyle: any = { width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: '14px', outline: 'none', transition: 'border 0.2s' };
+const labelStyle: any = { display: 'block', marginBottom: 8, fontSize: '13px', fontWeight: '600', color: '#1e293b' };
+const inputGroup: any = { marginBottom: 15 };
+
+const modalOverlay: any = { position:'fixed', inset:0, background:'rgba(15, 23, 42, 0.6)', display:'flex', justifyContent:'center', alignItems:'center', zIndex: 1000, backdropFilter: 'blur(4px)' };
+const modalContent: any = { background:'white', padding: 30, borderRadius: 20, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' };
